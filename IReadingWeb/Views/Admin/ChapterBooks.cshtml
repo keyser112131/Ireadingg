@@ -1,0 +1,418 @@
+﻿@{
+    Layout = "~/Views/Admin/_AdminLayout.cshtml";
+}
+@* @model Book *@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@functions {
+    public string GetAntiXsrfRequestToken()
+    {
+        return Xsrf.GetAndStoreTokens(Context).RequestToken;
+    }
+}
+<style>
+    .btn1 {
+        height: 30px;
+        width: 30px;
+        padding: 0;
+        margin: 0;
+    }
+
+    .status-free {
+        color: #42a952;
+        background-color: #dff2de;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .status-payment {
+        color: #D84315;
+        background-color: #FFE0B2;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .status-pending {
+        color: gray;
+        background-color: #80808069;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .status-decline {
+        color: #a94442;
+        background-color: #a944423d;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+</style>
+@if (User.IsInRole("Author"))
+{
+    <button type="button" onclick="window.location.href ='/Admin/@ViewBag.BookId/CreateChapterBook'" class="btn btn-success @ViewBag.ButtonAddChapter">
+        Thêm chương
+    </button>
+    <button type="button" onclick="finishBook(@ViewBag.BookId)" data-toggle="modal" data-target="#exampleModalFinishBook" class="btn btn-info @ViewBag.ButtonFinish">
+        Hoàn thành tác phẩm
+    </button>
+}
+<button type="button" onclick="window.location.href='/Admin/Books'" class="btn btn-secondary ml-2">Quay lại</button>
+<div class="row">
+    <div class="col-12">
+        <div class="card my-4">
+            <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                <div class="bg-gradient-primary shadow-primary border-radius-lg pt-4 pb-3">
+                    <h6 class="text-white text-capitalize ps-3"></h6>
+                </div>
+            </div>
+            <div class="card-body px-0 pb-2">
+                <div class="table-responsive table-responsive1 p-0">
+                    <table id="table" class="table align-items-center mb-0">
+                        <thead>
+                            <tr>
+                                <th style="padding-left:2rem" class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">STT</th>
+                                <th class="text-left text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tên chương</th>
+                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Xuất bản lúc</th>
+                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Số từ</th>
+                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Lượt đọc</th>
+                                <th class="text-center text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Doanh thu (xu)</th>
+                                <th class="text-center text-secondary opacity-7"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (BookChapter item in ViewBag.ChapterBooks)
+                            {
+                                <tr>
+                                    <td class="text-center align-middle" style="padding-left:1.5rem">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.ChapterNumber</span>
+                                    </td>
+                                    <td class="text-left align-middle" style="padding-left:1.5rem">
+                                        <span class="text-secondary text-xs font-weight-bold">@(item.ChapterName.Length > 35 ? item.ChapterName.Substring(0, 35) + "..." : item.ChapterName)
+                                            <span style="margin-left:5px" class="@(item.BookType == BookType.Payment ? "status-payment" : item.BookType == BookType.Free ? "status-free" : item.BookType == BookType.PendingApproval || item.BookType == BookType.Hidden || item.BookType == BookType.Draft || item.BookType == BookType.LoadingEdit ? "status-pending" : "status-decline")">
+                                            @(item.BookType == BookType.Payment ? "Trả phí" : item.BookType == BookType.Free ? "Miễn phí" : item.BookType == BookType.PendingApproval ? "Chờ duyệt" : item.BookType == BookType.Hidden ? "Ẩn chương" : item.BookType == BookType.Draft ? "Bản thảo" : item.BookType == BookType.LoadingEdit ? "Chờ cập nhật" : "Hủy duyệt")
+                                        </span>
+                                        <span style="margin-left:5px" class="@(item.AudioUrl == "Audio" ? "status-free" : "d-none")">
+                                            @item.AudioUrl
+                                        </span>
+                                        </span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.ModifyDate.AddHours(7).ToString("HH:mm dd/MM/yyyy")</span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.WordNo</span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.ViewNo</span>
+                                    </td>
+                                    <td class="text-center align-middle">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.Revenue</span>
+                                    </td>
+                                    @if (User.IsInRole("Author"))
+                                    {
+                                        <td class="text-center align-middle">
+                                            <button onclick="window.location.href='/Admin/@ViewBag.BookId/UpdateChapterBook/@item.Id'" title="Sửa" class="btn1 btn btn-secondary">
+                                                <i class="fa-solid fa-pen-to-square"></i>
+                                            </button>
+                                            <button onclick="deleteItem('@item.Id')" title="Xóa" class="@(ViewBag.HiddenOrRemoveChapter && (item.BookType == BookType.PendingApproval || item.BookType == BookType.Hidden || item.BookType == BookType.Draft) ? "" : "disabled") btn1 btn btn-secondary">
+                                                <i class="fa-solid fa-trash"></i>
+                                            </button>
+                                            <button onclick="hiddenItem('@item.Id','@item.BookType')" title="@(item.BookType == BookType.Hidden ? "Mở lại" : "Ẩn")" class="@(ViewBag.HiddenOrRemoveChapter && (item.BookType == BookType.PendingApproval || item.BookType == BookType.Hidden || item.BookType == BookType.Draft) ? "" : "disabled") btn1 btn btn-secondary">
+                                                <i class="fa-solid @(item.BookType == BookType.Hidden ? "fa-eye" : "fa-eye-slash")"></i>
+                                            </button>
+                                        </td>
+                                    }
+                                    @if (User.IsInRole("Manager") || User.IsInRole("Admin"))
+                                    {
+                                        <td class="text-center align-middle">
+                                            <button onclick="contractAuthor(@ViewBag.BookId,'@item.Id')" title="Chi tiết" class="btn1 btn btn-secondary">
+                                                <i class="fa-solid fa-info"></i>
+                                            </button>
+                                            <button onclick="approveChapter(@ViewBag.BookId,'@item.Id')" type="button" title="Duyệt chương" class="@(item.BookType != BookType.PendingApproval ? "disabled" : "") btn1 btn btn-secondary">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                            <button onclick="declineChapter(@ViewBag.BookId,'@item.Id')" type="button" title="Không duyệt chương" class="@(item.BookType != BookType.PendingApproval ? "disabled" : "") btn1 btn btn-secondary">
+                                                <i class="fa-solid fa-times"></i>
+                                            </button>
+                                            <button class="btn1 btn btn-secondary" onclick="window.location.href='/Admin/@ViewBag.BookId/ChapterBookAudio/@item.Id'" title="Audio">
+                                                <i class="fa-solid fa-headphones"></i>
+                                            </button>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Finish Book -->
+<div class="modal fade" id="exampleModalFinishBook" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form id="formModal" class="modal-content" method="post" asp-action="UpdateFinishBook">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Hoàn thành tác phẩm</h5>
+                <button type="button" class="btn close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+@*                 <div class="note">
+                    <ul>
+                        <li>- Danh mục con: abc</li>
+                    </ul>
+                </div> *@
+                <div style="display:block" class="form-group input-group input-group-outline">
+                    <span id="responseText"></span>
+                </div>
+                <div style="display:block" class="book-price-div form-group input-group input-group-outline mt-4">
+                    <label for="Price">Thu phí:</label>
+                    <input style="width:100%" id="book-price-val" type="number" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" id="btn-finish" onclick="updateFinishBook()" class="btn btn-primary">Hoàn thành</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script type="text/javascript">
+    // document.getElementById('BooksId').classList.add('active');
+    let table = new DataTable('#table', {
+        responsive: true
+    });
+
+    function contractAuthor(id,chapterId){
+        window.location.href = `/Admin/ContractAuthor/${id}/${chapterId}?returnUrl=ChapterBooks`;
+    }
+
+    function approveChapter(id,chapterId) {
+        if (confirm("Bạn có muốn duyệt chương ?") == false) return;
+        $('#tbodyFeedback').html('');
+        $('#loadingDivFeedBack').show();
+        //var formData = new FormData();
+        //formData.append("chapterId", chapterId);
+        $.ajax(
+            {
+                url: `/Admin/UpdateApproveChapterBook/${id}?chapterId=${chapterId}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    if (data.IsSussess == false) {
+                        notyf.error(data.message);
+                        return;
+                    }
+                    notyf.success(data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                }
+            }
+        );
+
+    }
+
+    function declineChapter(id, chapterId) {
+        if (confirm("Bạn có muốn hủy duyệt ?") == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/DeclineChapterBook/${id}?chapterId=${chapterId}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    if (data.IsSussess == false) {
+                        notyf.error(data.message);
+                        return;
+                    }
+                    notyf.success(data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                }
+            }
+        );
+
+    }
+
+    function showPopup(id){
+        $.ajax(
+            {
+                url: `/Admin/GetPost?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    $('#post-cate-id').val(data.postCategoryId);
+                    $('#post-id').val(data.id);
+                    $('#PostDescription-id').val(data.postDescription);
+                    $('#img-post-id').attr('src', data.image);
+                    $('#image-post').val(data.image);
+                    $('#img-post-id').removeClass('d-none');
+                    $('#post-title').val(data.title);
+                    //console.log(data);
+                    //window.location.reload();
+                }
+            }
+        );
+    }
+
+    function finishBook(id){
+        $('#responseText').html('');
+        $('#book-price-val').val('0');
+        $.ajax(
+            {
+                url: `/Admin/CheckFinishBook?bookId=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    //console.log(data);
+                    $('#responseText').html(data.message);
+                    $('#book-price-val').val(data.data);
+                    if(data.isSussess == false){
+                        $("#responseText").addClass("status-decline");
+                        $('#book-price-val').attr('disabled','disabled');
+                        $('#btn-finish').attr('disabled','disabled');
+                    }
+                    else{
+                        $("#responseText").addClass("status-free");
+                        $('#book-price-val').removeAttr("disabled");
+                        $('#btn-finish').removeAttr("disabled");
+                    }
+                }
+            }
+        );
+
+    }
+
+    function updateFinishBook() {
+        if (confirm("Bạn muốn hoàn thành đầu sách ?") == false) return;
+        var bookId = '@ViewBag.BookId';
+        var price = $('#book-price-val').val();
+        //console.log(price);
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/UpdateFinishBook?bookId=${bookId}&price=${price}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    if (data.isSussess == false){
+                        notyf.error(data.message);
+                        return;
+                    }
+                    notyf.success(data.message);
+                    setTimeout(() =>{
+                        window.location.href = '/Admin/Books';
+                    },800);
+
+                }
+            }
+        );
+
+    }
+
+    function hiddenItem(id,type) {
+        var message = type != 'Hidden' ? "ẩn" : "hiển thị"
+        if (confirm(`Bạn có muốn ${message} chương?`) == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/HiddenChapterBook?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    if (data.isSussess == false){
+                        notyf.error(data.message);
+                        return;
+                    }
+                    notyf.success(data.message);
+                    setTimeout(() =>{
+                        window.location.reload();
+                    },800);
+
+                }
+            }
+        );
+
+    }
+
+    function deleteItem(id) {
+        if (confirm("Bạn có muốn xóa ?") == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/DeleteChapterBook/${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    if (data.isSussess == false){
+                        notyf.error(data.message);
+                        return;
+                    }
+                    notyf.success(data.message);
+                    setTimeout(() =>{
+                        window.location.reload();
+                    },800);
+
+                }
+            }
+        );
+
+    }
+</script>

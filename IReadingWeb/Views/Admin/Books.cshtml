@@ -1,0 +1,393 @@
+﻿@{
+    Layout = "~/Views/Admin/_AdminLayout.cshtml";
+}
+@* @model Book *@
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Xsrf
+@functions {
+    public string GetAntiXsrfRequestToken()
+    {
+        return Xsrf.GetAndStoreTokens(Context).RequestToken;
+    }
+}
+<style>
+
+        .status-free {
+        color: #42a952;
+        background-color: #dff2de;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+    .status-payment {
+        color: #D84315;
+        background-color: #FFE0B2;
+        padding: 5px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+    }
+
+     .btn1 {
+         height: 30px;
+         width: 30px;
+         padding: 0;
+         margin: 0;
+     }
+
+    li.dt-paging-button:hover {
+        background-color: white !important;
+        border: 1px solid white !important;
+        background: white !important;
+    }
+</style>
+@* <button type="button" onclick="document.getElementById('formModal').reset();" class="btn btn-success" data-toggle="modal" data-target="#exampleModalPost">
+    Tạo mới
+</button> *@
+        @* { "Hoàn thành", "Còn tiếp" , "Tạm dừng" , "Chờ xuất bản" , "Đã xuất bản","Chờ duyệt" }; *@
+<div class="row">
+    <div class="col-12">
+        <div class="card my-4">
+            <div class="card-header p-0 position-relative mt-n4 mx-3 z-index-2">
+                <div class="bg-gradient-primary shadow-primary border-radius-lg pt-4 pb-3">
+                    <h6 class="text-white text-capitalize ps-3"></h6>
+                </div>
+            </div>
+            <div class="card-body px-0 pb-2">
+                @if(User.IsInRole("Manager")){
+                    <div style="width:12rem;margin-left:2rem" class="form-group input-group input-group-outline mt-4">
+                        <select style="width:100%" class="form-select form-control" onchange="ChangeSelect(this)" id="StatusType">
+                            <option value="0">Hoàn thành</option>
+                            @* <option value="1">Còn tiếp</option> *@
+                            <option value="2">Tạm dừng</option>
+                            <option value="3">Chờ xuất bản</option>
+                            <option value="4">Đã xuất bản</option>
+                            <option value="5">Chờ duyệt</option>
+                        </select>
+                    </div>
+                }
+                <div class="table-responsive table-responsive1 p-0">
+                    <table id="table" class="table align-items-center mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Sách</th>
+                                @if (User.IsInRole("Manager") || User.IsInRole("Admin"))
+                                {
+                                    <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Tác giả</th>
+                                }
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Mới xuất bản</th>
+                                <th class="text-uppercase text-center text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Thời gian</th>
+                                <th class="text-center text-secondary opacity-7"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (BookViewModel item in ViewBag.Books)
+                            {
+                                <tr>
+                                    <td>
+                                        <div class="d-flex">
+                                            <img src="@item.Poster" class="avatar avatar-sm me-3" style="border-radius:5px;width:50px!important;height:50px!important" alt="">
+                                            <div>
+                                                <p id="name-@item.Id" class="text-l font-weight-bold mb-0">@(item.Name.Length > 35 ? item.Name.Substring(0, 35) + "..." : item.Name)</p>
+                                                <span class="text-secondary text-xs">@item.BookStatus <span style="margin-right:5px" class="@(item.BookTypePrice == BookTypePrice.PayByBook ? "status-payment" : "status-free")">@(item.BookTypePrice == BookTypePrice.PayByBook ? "Thanh toán theo sách" : "Thanh toán theo chương")</span><span class="@(item.Status == BookStatus.Done && item.BookTypePrice != BookTypePrice.PayByBook && item.Price > 0 ? "status-payment" : "d-none")">Thanh toán theo sách</span></span>
+                                            </div>
+                                        </div>                                  
+                                    </td>
+                                    @if (User.IsInRole("Manager") || User.IsInRole("Admin"))
+                                    {
+                                        <td style="padding-left:1.5rem">
+                                            <span class="text-secondary text-xs font-weight-bold">@item.Author</span>
+                                        </td>
+                                    }
+
+                                    <td style="padding-left:1.5rem">
+                                        <span class="text-secondary text-xs font-weight-bold">@(item.NewPulished.Length > 35 ? item.NewPulished.Substring(0, 35) + "..." : item.NewPulished)</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="text-secondary text-xs font-weight-bold">@item.NewPulishedDateTime</span>
+                                    </td>
+                                    <td class="align-middle text-center">
+                                        <button class="@(User.IsInRole("Manager") || User.IsInRole("Admin") ? "" : "d-none") btn1 btn btn-secondary" onclick="window.location.href='/Admin/UpdateBook/@item.Id'" title="Thông tin sách">
+                                            <i class="fa-solid fa-info"></i>
+                                        </button>
+                                        <button class="@((User.IsInRole("Manager") || User.IsInRole("Admin")) ? "" : "d-none") btn1 btn btn-secondary" onclick="window.location.href='/Admin/ApproveBook/@item.Id'" title="Duyệt sách">
+                                            <i class="fa-solid fa-check-square-o"></i>
+                                        </button>
+                                        <button class="@(User.IsInRole("Author") ? "" : "d-none") @(item.Status == BookStatus.Done || (item.BookTypePrice == BookTypePrice.PayByBook && item.Status == BookStatus.PendingApproval) ? "disabled" : "") btn1 btn btn-secondary" onclick="window.location.href='/Admin/@item.Id/CreateChapterBook?ReturnUrl=Books'" title="Thêm chương">
+                                            <i class="fa-solid fa-plus"></i>
+                                        </button>
+                                        <button onclick="window.location.href='/Admin/@item.Id/ChapterBooks'" title="Danh sách chương" class="btn1 btn btn-secondary">
+                                            <i class="fa-solid fa-list"></i>
+                                        </button>
+                                        <button class="@(User.IsInRole("Author") ? "" : "d-none") btn1 btn btn-secondary" onclick="window.location.href='/Admin/UpdateBook/@item.Id'" title="Chỉnh sửa sách" >
+                                            <i class="fa-solid fa-pen-to-square"></i>
+                                        </button>
+                                        <button type="button" class="@(User.IsInRole("Author") ? "" : "d-none") @(item.Status == BookStatus.PendingPublication ? "" : "disabled") btn1 btn btn-secondary" onclick="deleteItem(@item.Id)" title="Xóa sách">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                        @if(item.Status != BookStatus.Pause)
+                                        {
+                                            <button class="@((User.IsInRole("Manager") || User.IsInRole("Admin")) ? "" : "d-none") btn1 btn btn-secondary" onclick="BanBook(@item.Id)" title="Tạm dừng sách">
+                                                <i class="fa-solid fa-ban"></i>
+                                            </button>
+                                        }
+                                        else
+                                        {
+                                            <button class="@((User.IsInRole("Manager") || User.IsInRole("Admin")) ? "" : "d-none") btn1 btn btn-secondary" onclick="UnBanBook(@item.Id)" title="Gỡ tạm dừng sách">
+                                                <i class="fa-solid fa-check"></i>
+                                            </button>
+                                        }
+                                        <button type="button" class="@(User.IsInRole("Author") ? "d-none" : "d-none") btn1 btn btn-secondary" onclick="GetChart(@item.Id)" data-toggle="modal" data-target="#exampleModal" title="Thống kê">
+                                            <i class="fa-solid fa-chart-simple"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog" style="max-width:90%;max-height:60rem">
+        <div id="formModal" class="modal-content">
+            <div class="modal-header ">
+                <h5 class="modal-title" id="exampleModalLabel">Thống kê</h5>
+                <button type="button" class="btn close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <canvas id="myChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+<script type="text/javascript">
+    document.getElementById('BooksId').classList.add('active');
+    FillStatus();
+
+    let table = new DataTable('#table', {
+        responsive: true,
+        columnDefs: [
+            {
+                targets: 3, 
+                render: function (data, type, row) {
+                    if (type === 'sort') {
+                        const parts = data.split(' ');
+                        const time = parts[0];
+                        const date = parts[1];
+                        const [hour, minute] = time.split(':');
+                        const [day, month, year] = date.split('/');
+                        return new Date(`${year}-${month}-${day}T${hour}:${minute}:00`).getTime();
+                    }
+                    return data;
+                }
+            }
+        ],
+        order: [[3, 'asc']]
+    });
+
+    function ChangeSelect(el) {
+        var status = $(el).val();
+        // if (table){
+        //     table.destroy();
+        // }
+        window.location.href = `/Admin/Books?bookType=${status}`;
+    }
+
+    function FillStatus(){
+        if ('@User.IsInRole("Manager")' == 'True') $('#StatusType').val('@ViewBag.BookType');
+    }
+
+    let myChart;
+    function GetChart(bookId) {
+        let ctx = document.getElementById('myChart');
+        if (myChart) {
+            myChart.destroy();
+        }
+
+        $.ajax(
+            {
+                url: `/Admin/StatisticsChapterBook/${bookId}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    //console.log(data);
+
+                    myChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: data.label,
+                            datasets: [{
+                                label: data.title,
+                                data: data.data,
+                                borderWidth: 1
+                            },
+                            {
+                                label: data.title,
+                                data: data.data,
+                                borderWidth: 1
+                            },
+                            {
+                                label: data.title,
+                                data: data.data,
+                                borderWidth: 1
+                            }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            plugins: {
+                                datalabels: {
+                                  anchor: 'end',
+                                  align: 'bottom',
+                                  color: '#000',
+                                  font: {
+                                    weight: 'bold'
+                                  },
+                                  formatter: function(value, context) {
+                                    return value == 0 ? '' : value;
+                                  }
+                                }
+                              },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    ticks: {
+                                        stepSize: 1
+                                    }
+                                }
+                            }
+                        },
+                        plugins: [ChartDataLabels]
+                    });
+                }
+            }
+        );
+
+    }
+
+    function showPopup(id){
+        $.ajax(
+            {
+                url: `/Admin/GetPost?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    $('#post-cate-id').val(data.postCategoryId);
+                    $('#post-id').val(data.id);
+                    $('#PostDescription-id').val(data.postDescription);
+                    $('#img-post-id').attr('src', data.image);
+                    $('#image-post').val(data.image);
+                    $('#img-post-id').removeClass('d-none');
+                    $('#post-title').val(data.title);
+                    //console.log(data);
+                    //window.location.reload();
+                }
+            }
+        );
+    }
+
+    function deleteItem(id) {
+        if (confirm("Bạn có muốn xóa ?") == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/DeleteBook?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    notyf.success(data.message);
+                    setTimeout(() => {
+                        window.location.href = '/Admin/Books';
+                    }, 800);
+                }
+            }
+        );
+
+    }
+
+    function BanBook(id) {
+        if (confirm("Bạn có muốn tạm dừng ?") == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/BanBook?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    notyf.success(data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                }
+            }
+        );
+
+    }
+
+    function UnBanBook(id) {
+        if (confirm("Bạn có muốn gỡ tạm dừng ?") == false) return;
+        //var formData = new FormData();
+        $.ajax(
+            {
+                url: `/Admin/UnBanBook?id=${id}`,
+                type: "GET",
+                headers:
+                {
+                    "RequestVerificationToken": '@GetAntiXsrfRequestToken()'
+                },
+                //data: formData,
+                //dataType: "json",
+                async: true,
+                processData: false,
+                contentType: false,
+                success: function (data) {
+                    notyf.success(data.message);
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 800);
+                }
+            }
+        );
+
+    }
+</script>
